@@ -36,6 +36,29 @@ class Book {
       notes: notes ?? this.notes,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'author': author,
+      'category': category,
+      'shelfId': shelfId,
+      'status': status.name,
+      'notes': notes,
+    };
+  }
+
+  factory Book.fromMap(String id, Map<String, Object?> map) {
+    return Book(
+      id: id,
+      title: map['title'] as String? ?? '',
+      author: map['author'] as String? ?? '',
+      category: map['category'] as String? ?? '',
+      shelfId: map['shelfId'] as String? ?? '',
+      status: BookStatus.fromName(map['status'] as String?),
+      notes: map['notes'] as String?,
+    );
+  }
 }
 
 enum BookStatus {
@@ -46,4 +69,11 @@ enum BookStatus {
   const BookStatus(this.label);
 
   final String label;
+
+  static BookStatus fromName(String? name) {
+    return BookStatus.values.firstWhere(
+      (status) => status.name == name,
+      orElse: () => BookStatus.owned,
+    );
+  }
 }

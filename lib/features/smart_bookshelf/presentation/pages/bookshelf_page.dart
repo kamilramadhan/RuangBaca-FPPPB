@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/book.dart';
 import '../../data/models/shelf.dart';
 import '../../data/repositories/bookshelf_repository.dart';
+import '../../data/services/book_search_service.dart';
 
 class BookshelfPage extends StatefulWidget {
   const BookshelfPage({super.key});
@@ -12,7 +13,7 @@ class BookshelfPage extends StatefulWidget {
 }
 
 class _BookshelfPageState extends State<BookshelfPage> {
-  final BookshelfRepository _repository = InMemoryBookshelfRepository();
+  final BookshelfRepository _repository = BookshelfRepositoryFactory.create();
   final TextEditingController _searchController = TextEditingController();
 
   List<Book> _books = [];
@@ -87,6 +88,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${book.title} ditambahkan ke rak.')),
+    );
+  }
+
+  Future<void> _updateBook(Book book) async {
+    await _repository.updateBook(book);
+    await _loadBookshelf();
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${book.title} berhasil diperbarui.')),
     );
   }
 
@@ -182,6 +196,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
                       (book) => _BookCard(
                         book: book,
                         shelfName: _shelfName(book.shelfId),
+                        onEdit: () => _showEditBookSheet(book),
                         onDelete: () => _removeBook(book),
                       ),
                     ),
@@ -201,6 +216,23 @@ class _BookshelfPageState extends State<BookshelfPage> {
           onSubmit: (book) {
             Navigator.pop(context);
             _addBook(book);
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditBookSheet(Book book) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return _AddBookSheet(
+          shelves: _shelves,
+          initialBook: book,
+          onSubmit: (updatedBook) {
+            Navigator.pop(context);
+            _updateBook(updatedBook);
           },
         );
       },
@@ -470,11 +502,13 @@ class _BookCard extends StatelessWidget {
   const _BookCard({
     required this.book,
     required this.shelfName,
+    required this.onEdit,
     required this.onDelete,
   });
 
   final Book book;
   final String shelfName;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
@@ -516,15 +550,43 @@ class _BookCard extends StatelessWidget {
               ),
           ],
         ),
-        trailing: IconButton(
-          tooltip: 'Hapus buku',
-          onPressed: onDelete,
-          icon: const Icon(Icons.delete_outline),
+        trailing: PopupMenuButton<_BookAction>(
+          tooltip: 'Aksi buku',
+          onSelected: (action) {
+            switch (action) {
+              case _BookAction.edit:
+                onEdit();
+                break;
+              case _BookAction.delete:
+                onDelete();
+                break;
+            }
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: _BookAction.edit,
+              child: ListTile(
+                leading: Icon(Icons.edit_outlined),
+                title: Text('Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: _BookAction.delete,
+              child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('Hapus'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+enum _BookAction { edit, delete }
 
 class _EmptyBookshelf extends StatelessWidget {
   const _EmptyBookshelf();
@@ -551,9 +613,14 @@ class _EmptyBookshelf extends StatelessWidget {
 }
 
 class _AddBookSheet extends StatefulWidget {
-  const _AddBookSheet({required this.shelves, required this.onSubmit});
+  const _AddBookSheet({
+    required this.shelves,
+    required this.onSubmit,
+    this.initialBook,
+  });
 
   final List<Shelf> shelves;
+  final Book? initialBook;
   final ValueChanged<Book> onSubmit;
 
   @override
@@ -562,13 +629,30 @@ class _AddBookSheet extends StatefulWidget {
 
 class _AddBookSheetState extends State<_AddBookSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _searchService = const BookSearchService();
   final _titleController = TextEditingController();
   final _authorController = TextEditingController();
   final _categoryController = TextEditingController();
   final _notesController = TextEditingController();
 
-  late String _shelfId = widget.shelves.first.id;
+  late String _shelfId;
   BookStatus _status = BookStatus.owned;
+  bool _isSearching = false;
+
+  bool get _isEditing => widget.initialBook != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final initialBook = widget.initialBook;
+    _titleController.text = initialBook?.title ?? '';
+    _authorController.text = initialBook?.author ?? '';
+    _categoryController.text = initialBook?.category ?? '';
+    _notesController.text = initialBook?.notes ?? '';
+    _shelfId = initialBook?.shelfId ?? widget.shelves.first.id;
+    _status = initialBook?.status ?? BookStatus.owned;
+  }
 
   @override
   void dispose() {
@@ -597,7 +681,7 @@ class _AddBookSheetState extends State<_AddBookSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Tambah Buku',
+                  _isEditing ? 'Edit Buku' : 'Tambah Buku',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
@@ -608,6 +692,17 @@ class _AddBookSheetState extends State<_AddBookSheet> {
                     border: OutlineInputBorder(),
                   ),
                   validator: _required,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isSearching ? null : _searchOpenLibrary,
+                  icon: _isSearching
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.travel_explore_outlined),
+                  label: const Text('Cari di Open Library'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -682,7 +777,7 @@ class _AddBookSheetState extends State<_AddBookSheet> {
                 FilledButton.icon(
                   onPressed: _submit,
                   icon: const Icon(Icons.save_outlined),
-                  label: const Text('Simpan Buku'),
+                  label: Text(_isEditing ? 'Perbarui Buku' : 'Simpan Buku'),
                 ),
               ],
             ),
@@ -707,7 +802,9 @@ class _AddBookSheetState extends State<_AddBookSheet> {
 
     widget.onSubmit(
       Book(
-        id: 'book-${DateTime.now().microsecondsSinceEpoch}',
+        id:
+            widget.initialBook?.id ??
+            'book-${DateTime.now().microsecondsSinceEpoch}',
         title: _titleController.text.trim(),
         author: _authorController.text.trim(),
         category: _categoryController.text.trim(),
@@ -718,6 +815,77 @@ class _AddBookSheetState extends State<_AddBookSheet> {
             : _notesController.text.trim(),
       ),
     );
+  }
+
+  Future<void> _searchOpenLibrary() async {
+    setState(() => _isSearching = true);
+
+    try {
+      final results = await _searchService.search(_titleController.text);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Buku tidak ditemukan.')));
+        return;
+      }
+
+      final selectedResult = await showDialog<BookSearchResult>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: const Text('Pilih Buku'),
+          children: results
+              .map(
+                (result) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(context, result),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(result.author),
+                      Text(
+                        result.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      );
+
+      if (selectedResult == null) {
+        return;
+      }
+
+      setState(() {
+        _titleController.text = selectedResult.title;
+        _authorController.text = selectedResult.author;
+        _categoryController.text = selectedResult.category;
+      });
+    } on BookSearchException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
+    }
   }
 }
 
