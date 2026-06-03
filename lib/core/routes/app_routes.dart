@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../features/community_review/community_review.dart';
 import '../../features/reading_progress/reading_progress.dart';
 import '../../features/smart_bookshelf/smart_bookshelf.dart';
-import '../widgets/home_page.dart';
+import '../widgets/app_shell.dart';
 
 class AppRoutes {
   const AppRoutes._();
@@ -14,9 +14,9 @@ class AppRoutes {
   static const String community = '/community';
 
   static final Map<String, WidgetBuilder> routes = {
-    home: (_) => const HomePage(),
+    home: (_) => const AppShell(),
     bookshelf: (_) => const BookshelfPage(),
-    readingProgress: (_) => const ReadingProgressPage(),
+    readingProgress: (_) => const ReadingAnalyticsPage(),
     community: (_) => const CommunityPage(),
   };
 }
