@@ -3,10 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../models/book.dart';
+import '../models/borrow_request.dart';
 import '../models/shelf.dart';
 
 abstract class BookshelfRepository {
   Future<List<Book>> getBooks();
+  Future<List<Book>> getAvailableBooks();
   Future<List<Shelf>> getShelves();
   Future<void> addBook(Book book);
   Future<void> addShelf(Shelf shelf);
@@ -14,6 +16,12 @@ abstract class BookshelfRepository {
   Future<void> updateShelf(Shelf shelf);
   Future<void> removeBook(String id);
   Future<void> removeShelf(String id);
+
+  Future<List<BorrowRequest>> getIncomingRequests();
+  Future<List<BorrowRequest>> getOutgoingRequests();
+  Future<void> createBorrowRequest(BorrowRequest request);
+  Future<void> updateBorrowRequestStatus(
+      String requestId, BorrowRequestStatus status);
 }
 
 class BookshelfRepositoryFactory {
@@ -41,18 +49,18 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
     : _shelves = [
         const Shelf(
           id: 'main',
-          name: 'Rak Utama',
+          name: 'Rak Pribadi',
           description: 'Koleksi buku yang sudah dimiliki.',
         ),
         const Shelf(
-          id: 'wishlist',
-          name: 'Incaran',
-          description: 'Daftar buku yang ingin dibeli atau dibaca.',
+          id: 'lend',
+          name: 'Bisa Dipinjam',
+          description: 'Buku yang boleh dipinjam user lain.',
         ),
         const Shelf(
-          id: 'lent',
-          name: 'Dipinjamkan',
-          description: 'Buku yang sedang dipinjam orang lain.',
+          id: 'wishlist',
+          name: 'Wishlist',
+          description: 'Daftar buku yang ingin dibaca/dimiliki.',
         ),
       ],
       _books = [
@@ -67,6 +75,14 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
         ),
         const Book(
           id: 'book-2',
+          title: 'Filosofi Teras',
+          author: 'Henry Manampiring',
+          category: 'Nonfiksi',
+          shelfId: 'lend',
+          status: BookStatus.availableToLend,
+        ),
+        const Book(
+          id: 'book-3',
           title: 'Atomic Habits',
           author: 'James Clear',
           category: 'Pengembangan Diri',
@@ -74,71 +90,86 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
           status: BookStatus.wishlist,
           notes: 'Masuk daftar belanja bulan depan.',
         ),
-        const Book(
-          id: 'book-3',
-          title: 'Filosofi Teras',
-          author: 'Henry Manampiring',
-          category: 'Nonfiksi',
-          shelfId: 'lent',
-          status: BookStatus.lent,
-          notes: 'Dipinjam teman kelas.',
+      ],
+      _borrowRequests = [
+        BorrowRequest(
+          id: 'req-1',
+          bookId: 'book-2',
+          bookTitle: 'Filosofi Teras',
+          ownerId: 'user-me',
+          ownerName: 'Saya',
+          borrowerId: 'user-b',
+          borrowerName: 'Budi',
+          status: BorrowRequestStatus.pending,
+          requestedAt: DateTime(2025, 6, 1),
         ),
       ];
 
   final List<Book> _books;
   final List<Shelf> _shelves;
+  final List<BorrowRequest> _borrowRequests;
+
+  static const _currentUserId = 'user-me';
 
   @override
-  Future<List<Book>> getBooks() async {
-    return List.unmodifiable(_books);
-  }
+  Future<List<Book>> getBooks() async => List.unmodifiable(_books);
 
   @override
-  Future<List<Shelf>> getShelves() async {
-    return List.unmodifiable(_shelves);
-  }
+  Future<List<Book>> getAvailableBooks() async =>
+      List.unmodifiable(_books.where((b) => b.status == BookStatus.availableToLend));
 
   @override
-  Future<void> addBook(Book book) async {
-    _books.add(book);
-  }
+  Future<List<Shelf>> getShelves() async => List.unmodifiable(_shelves);
 
   @override
-  Future<void> addShelf(Shelf shelf) async {
-    _shelves.add(shelf);
-  }
+  Future<void> addBook(Book book) async => _books.add(book);
+
+  @override
+  Future<void> addShelf(Shelf shelf) async => _shelves.add(shelf);
 
   @override
   Future<void> updateBook(Book book) async {
-    final index = _books.indexWhere((currentBook) => currentBook.id == book.id);
-    if (index != -1) {
-      _books[index] = book;
-    }
+    final i = _books.indexWhere((b) => b.id == book.id);
+    if (i != -1) _books[i] = book;
   }
 
   @override
   Future<void> updateShelf(Shelf shelf) async {
-    final index = _shelves.indexWhere(
-      (currentShelf) => currentShelf.id == shelf.id,
-    );
-    if (index != -1) {
-      _shelves[index] = shelf;
-    }
+    final i = _shelves.indexWhere((s) => s.id == shelf.id);
+    if (i != -1) _shelves[i] = shelf;
   }
 
   @override
-  Future<void> removeBook(String id) async {
-    _books.removeWhere((book) => book.id == id);
-  }
+  Future<void> removeBook(String id) async =>
+      _books.removeWhere((b) => b.id == id);
 
   @override
   Future<void> removeShelf(String id) async {
-    _shelves.removeWhere((shelf) => shelf.id == id);
-    for (var index = 0; index < _books.length; index++) {
-      if (_books[index].shelfId == id) {
-        _books[index] = _books[index].copyWith(shelfId: 'main');
+    _shelves.removeWhere((s) => s.id == id);
+    for (var i = 0; i < _books.length; i++) {
+      if (_books[i].shelfId == id) {
+        _books[i] = _books[i].copyWith(shelfId: 'main');
       }
     }
+  }
+
+  @override
+  Future<List<BorrowRequest>> getIncomingRequests() async =>
+      List.unmodifiable(_borrowRequests.where((r) => r.ownerId == _currentUserId));
+
+  @override
+  Future<List<BorrowRequest>> getOutgoingRequests() async =>
+      List.unmodifiable(_borrowRequests.where((r) => r.borrowerId == _currentUserId));
+
+  @override
+  Future<void> createBorrowRequest(BorrowRequest request) async =>
+      _borrowRequests.add(request);
+
+  @override
+  Future<void> updateBorrowRequestStatus(
+      String requestId, BorrowRequestStatus status) async {
+    final i = _borrowRequests.indexWhere((r) => r.id == requestId);
+    if (i != -1) _borrowRequests[i] = _borrowRequests[i].copyWith(status: status);
   }
 }
 
@@ -152,30 +183,34 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  CollectionReference<Map<String, dynamic>> get _booksCollection {
-    return _userCollection.collection('books');
-  }
-
-  CollectionReference<Map<String, dynamic>> get _shelvesCollection {
-    return _userCollection.collection('shelves');
-  }
-
-  DocumentReference<Map<String, dynamic>> get _userCollection {
+  String get _uid {
     final user = _auth.currentUser;
-    if (user == null) {
-      throw const BookshelfAuthRequiredException();
-    }
-
-    return _firestore.collection('users').doc(user.uid);
+    if (user == null) throw const BookshelfAuthRequiredException();
+    return user.uid;
   }
+
+  CollectionReference<Map<String, dynamic>> get _booksCollection =>
+      _firestore.collection('users').doc(_uid).collection('books');
+
+  CollectionReference<Map<String, dynamic>> get _shelvesCollection =>
+      _firestore.collection('users').doc(_uid).collection('shelves');
+
+  CollectionReference<Map<String, dynamic>> get _requestsCollection =>
+      _firestore.collection('borrowRequests');
 
   @override
   Future<List<Book>> getBooks() async {
     final snapshot = await _booksCollection.orderBy('title').get();
+    return snapshot.docs.map((doc) => Book.fromMap(doc.id, doc.data())).toList();
+  }
 
-    return snapshot.docs
-        .map((doc) => Book.fromMap(doc.id, doc.data()))
-        .toList();
+  @override
+  Future<List<Book>> getAvailableBooks() async {
+    final snapshot = await _firestore
+        .collectionGroup('books')
+        .where('status', isEqualTo: BookStatus.availableToLend.name)
+        .get();
+    return snapshot.docs.map((doc) => Book.fromMap(doc.id, doc.data())).toList();
   }
 
   @override
@@ -185,51 +220,70 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
       await _seedDefaultShelves();
       return getShelves();
     }
-
-    return snapshot.docs
-        .map((doc) => Shelf.fromMap(doc.id, doc.data()))
-        .toList();
+    return snapshot.docs.map((doc) => Shelf.fromMap(doc.id, doc.data())).toList();
   }
 
   @override
-  Future<void> addBook(Book book) async {
-    await _booksCollection.doc(book.id).set(book.toMap());
-  }
+  Future<void> addBook(Book book) async =>
+      _booksCollection.doc(book.id).set(book.toMap());
 
   @override
-  Future<void> addShelf(Shelf shelf) async {
-    await _shelvesCollection.doc(shelf.id).set(shelf.toMap());
-  }
+  Future<void> addShelf(Shelf shelf) async =>
+      _shelvesCollection.doc(shelf.id).set(shelf.toMap());
 
   @override
-  Future<void> updateBook(Book book) async {
-    await _booksCollection.doc(book.id).update(book.toMap());
-  }
+  Future<void> updateBook(Book book) async =>
+      _booksCollection.doc(book.id).update(book.toMap());
 
   @override
-  Future<void> updateShelf(Shelf shelf) async {
-    await _shelvesCollection.doc(shelf.id).update(shelf.toMap());
-  }
+  Future<void> updateShelf(Shelf shelf) async =>
+      _shelvesCollection.doc(shelf.id).update(shelf.toMap());
 
   @override
-  Future<void> removeBook(String id) async {
-    await _booksCollection.doc(id).delete();
-  }
+  Future<void> removeBook(String id) async => _booksCollection.doc(id).delete();
 
   @override
   Future<void> removeShelf(String id) async {
     final batch = _firestore.batch();
     batch.delete(_shelvesCollection.doc(id));
-
-    final booksInShelf = await _booksCollection
-        .where('shelfId', isEqualTo: id)
-        .get();
+    final booksInShelf =
+        await _booksCollection.where('shelfId', isEqualTo: id).get();
     for (final doc in booksInShelf.docs) {
       batch.update(doc.reference, {'shelfId': 'main'});
     }
-
     await batch.commit();
   }
+
+  @override
+  Future<List<BorrowRequest>> getIncomingRequests() async {
+    final snapshot = await _requestsCollection
+        .where('ownerId', isEqualTo: _uid)
+        .orderBy('requestedAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => BorrowRequest.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  @override
+  Future<List<BorrowRequest>> getOutgoingRequests() async {
+    final snapshot = await _requestsCollection
+        .where('borrowerId', isEqualTo: _uid)
+        .orderBy('requestedAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => BorrowRequest.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  @override
+  Future<void> createBorrowRequest(BorrowRequest request) async =>
+      _requestsCollection.doc(request.id).set(request.toMap());
+
+  @override
+  Future<void> updateBorrowRequestStatus(
+      String requestId, BorrowRequestStatus status) async =>
+      _requestsCollection.doc(requestId).update({'status': status.name});
 
   Future<void> _seedDefaultShelves() async {
     final batch = _firestore.batch();

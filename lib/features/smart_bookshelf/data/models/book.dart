@@ -62,9 +62,11 @@ class Book {
 }
 
 enum BookStatus {
-  owned('Owned'),
-  wishlist('Wishlist'),
-  lent('Lent');
+  owned('Koleksi Pribadi'),
+  availableToLend('Bisa Dipinjam'),
+  lent('Sedang Dipinjamkan'),
+  borrowed('Sedang Dipinjam'),
+  wishlist('Wishlist');
 
   const BookStatus(this.label);
 
