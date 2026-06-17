@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'core/widgets/main_shell.dart';
+import 'core/widgets/auth_gate.dart';
 
 class RuangBacaApp extends StatelessWidget {
   const RuangBacaApp({super.key});
@@ -12,7 +12,7 @@ class RuangBacaApp extends StatelessWidget {
       title: 'RuangBaca',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const MainShell(),
+      home: const AuthGate(),
     );
   }
 }

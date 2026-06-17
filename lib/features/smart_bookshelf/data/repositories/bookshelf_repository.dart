@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import '../../../../core/services/auth_service.dart';
 import '../models/book.dart';
 import '../models/borrow_request.dart';
 import '../models/shelf.dart';
@@ -43,6 +44,40 @@ class BookshelfRepositoryFactory {
     return InMemoryBookshelfRepository();
   }
 }
+
+// ── Demo books milik pengguna lain (untuk tab Cari Buku) ────────────────────
+
+const _demoAvailableBooks = [
+  Book(
+    id: 'demo-avail-1',
+    title: 'Sapiens: Riwayat Singkat Umat Manusia',
+    author: 'Yuval Noah Harari',
+    category: 'Sejarah',
+    shelfId: '',
+    status: BookStatus.availableToLend,
+    ownerId: 'user-demo-a',
+  ),
+  Book(
+    id: 'demo-avail-2',
+    title: 'The Alchemist',
+    author: 'Paulo Coelho',
+    category: 'Novel',
+    shelfId: '',
+    status: BookStatus.availableToLend,
+    ownerId: 'user-demo-b',
+  ),
+  Book(
+    id: 'demo-avail-3',
+    title: 'Rich Dad Poor Dad',
+    author: 'Robert T. Kiyosaki',
+    category: 'Finansial',
+    shelfId: '',
+    status: BookStatus.availableToLend,
+    ownerId: 'user-demo-c',
+  ),
+];
+
+// ── In-Memory Repository ─────────────────────────────────────────────────────
 
 class InMemoryBookshelfRepository implements BookshelfRepository {
   InMemoryBookshelfRepository()
@@ -92,16 +127,29 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
         ),
       ],
       _borrowRequests = [
+        // Contoh permintaan masuk: 'Budi' mau pinjam 'Filosofi Teras' milik user lokal
         BorrowRequest(
           id: 'req-1',
           bookId: 'book-2',
           bookTitle: 'Filosofi Teras',
-          ownerId: 'user-me',
-          ownerName: 'Saya',
-          borrowerId: 'user-b',
+          ownerId: 'user-local',
+          ownerName: 'Pengguna',
+          borrowerId: 'user-demo-b',
           borrowerName: 'Budi',
           status: BorrowRequestStatus.pending,
           requestedAt: DateTime(2025, 6, 1),
+        ),
+        // Contoh permintaan keluar: user lokal mau pinjam 'Sapiens' dari 'Pengguna A'
+        BorrowRequest(
+          id: 'req-2',
+          bookId: 'demo-avail-1',
+          bookTitle: 'Sapiens: Riwayat Singkat Umat Manusia',
+          ownerId: 'user-demo-a',
+          ownerName: 'Pengguna A',
+          borrowerId: 'user-local',
+          borrowerName: 'Pengguna',
+          status: BorrowRequestStatus.pending,
+          requestedAt: DateTime(2025, 6, 2),
         ),
       ];
 
@@ -109,14 +157,14 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
   final List<Shelf> _shelves;
   final List<BorrowRequest> _borrowRequests;
 
-  static const _currentUserId = 'user-me';
+  String get _currentUserId => AuthService.instance.uid;
 
   @override
   Future<List<Book>> getBooks() async => List.unmodifiable(_books);
 
   @override
   Future<List<Book>> getAvailableBooks() async =>
-      List.unmodifiable(_books.where((b) => b.status == BookStatus.availableToLend));
+      List.unmodifiable(_demoAvailableBooks);
 
   @override
   Future<List<Shelf>> getShelves() async => List.unmodifiable(_shelves);
@@ -155,11 +203,13 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
 
   @override
   Future<List<BorrowRequest>> getIncomingRequests() async =>
-      List.unmodifiable(_borrowRequests.where((r) => r.ownerId == _currentUserId));
+      List.unmodifiable(
+          _borrowRequests.where((r) => r.ownerId == _currentUserId));
 
   @override
   Future<List<BorrowRequest>> getOutgoingRequests() async =>
-      List.unmodifiable(_borrowRequests.where((r) => r.borrowerId == _currentUserId));
+      List.unmodifiable(
+          _borrowRequests.where((r) => r.borrowerId == _currentUserId));
 
   @override
   Future<void> createBorrowRequest(BorrowRequest request) async =>
@@ -169,9 +219,13 @@ class InMemoryBookshelfRepository implements BookshelfRepository {
   Future<void> updateBorrowRequestStatus(
       String requestId, BorrowRequestStatus status) async {
     final i = _borrowRequests.indexWhere((r) => r.id == requestId);
-    if (i != -1) _borrowRequests[i] = _borrowRequests[i].copyWith(status: status);
+    if (i != -1) {
+      _borrowRequests[i] = _borrowRequests[i].copyWith(status: status);
+    }
   }
 }
+
+// ── Firestore Repository ─────────────────────────────────────────────────────
 
 class FirestoreBookshelfRepository implements BookshelfRepository {
   const FirestoreBookshelfRepository({
@@ -201,7 +255,9 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
   @override
   Future<List<Book>> getBooks() async {
     final snapshot = await _booksCollection.orderBy('title').get();
-    return snapshot.docs.map((doc) => Book.fromMap(doc.id, doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => Book.fromMap(doc.id, doc.data(), ownerId: _uid))
+        .toList();
   }
 
   @override
@@ -210,7 +266,11 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
         .collectionGroup('books')
         .where('status', isEqualTo: BookStatus.availableToLend.name)
         .get();
-    return snapshot.docs.map((doc) => Book.fromMap(doc.id, doc.data())).toList();
+    return snapshot.docs.map((doc) {
+      // Ekstrak ownerId dari path: users/{uid}/books/{bookId}
+      final ownerId = doc.reference.parent.parent?.id;
+      return Book.fromMap(doc.id, doc.data(), ownerId: ownerId);
+    }).toList();
   }
 
   @override
@@ -220,7 +280,9 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
       await _seedDefaultShelves();
       return getShelves();
     }
-    return snapshot.docs.map((doc) => Shelf.fromMap(doc.id, doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => Shelf.fromMap(doc.id, doc.data()))
+        .toList();
   }
 
   @override
@@ -240,7 +302,8 @@ class FirestoreBookshelfRepository implements BookshelfRepository {
       _shelvesCollection.doc(shelf.id).update(shelf.toMap());
 
   @override
-  Future<void> removeBook(String id) async => _booksCollection.doc(id).delete();
+  Future<void> removeBook(String id) async =>
+      _booksCollection.doc(id).delete();
 
   @override
   Future<void> removeShelf(String id) async {

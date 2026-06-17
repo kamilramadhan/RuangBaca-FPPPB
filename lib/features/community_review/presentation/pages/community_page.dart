@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../data/models/review.dart';
 import '../../data/models/discussion.dart';
 import '../../data/repositories/community_repository.dart';
@@ -38,27 +40,29 @@ class _CommunityPageState extends State<CommunityPage>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Komunitas'),
-        bottom: TabBar(
-          controller: _tabCtrl,
-          tabs: const [
-            Tab(text: 'Ulasan Buku'),
-            Tab(text: 'Diskusi'),
-          ],
+      body: Column(children: [
+        AppHeader(
+          padding: EdgeInsets.fromLTRB(
+              0, MediaQuery.of(context).padding.top + 16, 0, 0),
+          child: Column(children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: AppHeaderTitle(title: 'Komunitas'),
+            ),
+            const SizedBox(height: 8),
+            TabBar(
+              controller: _tabCtrl,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: Colors.white,
+              tabs: const [
+                Tab(text: 'Ulasan Buku'),
+                Tab(text: 'Diskusi'),
+              ],
+            ),
+          ]),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _onFabPressed(context),
-        icon: const Icon(Icons.add),
-        label: ListenableBuilder(
-          listenable: _tabCtrl,
-          builder: (_, _) => Text(
-            _tabCtrl.index == 0 ? 'Tulis Ulasan' : 'Buat Diskusi',
-          ),
-        ),
-      ),
-      body: TabBarView(
+        Expanded(child: TabBarView(
         controller: _tabCtrl,
         children: [
           // ── Tab 1: Ulasan ──
@@ -137,6 +141,17 @@ class _CommunityPageState extends State<CommunityPage>
             },
           ),
         ],
+      )),
+      ]),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _onFabPressed(context),
+        icon: const Icon(Icons.add),
+        label: ListenableBuilder(
+          listenable: _tabCtrl,
+          builder: (_, _) => Text(
+            _tabCtrl.index == 0 ? 'Tulis Ulasan' : 'Buat Diskusi',
+          ),
+        ),
       ),
     );
   }
@@ -165,7 +180,7 @@ class _ReviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const currentUid = 'guest';
+    final currentUid = AuthService.instance.uid;
     final isOwner = currentUid == review.userId;
 
     return Card(
@@ -295,7 +310,7 @@ class _DiscussionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const currentUid = 'guest';
+    final currentUid = AuthService.instance.uid;
     final isOwner = currentUid == discussion.userId;
 
     return Card(

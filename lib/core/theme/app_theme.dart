@@ -9,6 +9,14 @@ class AppTheme {
   static const Color accentColor = Color(0xFFBEE9E8);
   static const Color surfaceColor = Color(0xFFF7F9FC);
 
+  // Skala radius tetap dipakai di seluruh app — jangan ganti angka magic
+  // baru di halaman, pakai salah satu dari ini supaya bentuk komponen tetap
+  // konsisten (chip/icon box kecil, card/tombol, header/sheet besar).
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusXl = 24;
+
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primaryColor, secondaryColor],
     begin: Alignment.topLeft,
@@ -47,7 +55,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusLg),
           side: BorderSide(color: Colors.grey.shade200),
         ),
       ),
@@ -55,15 +63,15 @@ class AppTheme {
         filled: true,
         fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
         contentPadding:
@@ -72,7 +80,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
         ),
       ),

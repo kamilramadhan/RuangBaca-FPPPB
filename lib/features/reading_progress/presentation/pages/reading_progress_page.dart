@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/app_header.dart';
 import '../../data/models/reading_progress.dart';
 import '../../data/repositories/in_memory_reading_progress_repository.dart';
 import '../controllers/reading_progress_controller.dart';
@@ -73,42 +74,50 @@ class _ReadingProgressPageState extends State<ReadingProgressPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reading Progress')),
+      body: Column(
+        children: [
+          AppHeader(
+            child: const AppHeaderTitle(title: 'Reading Progress'),
+          ),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                if (_controller.isLoading && _controller.items.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (_controller.isEmpty) {
+                  return const _EmptyState();
+                }
+                return RefreshIndicator(
+                  onRefresh: _controller.load,
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 88),
+                    children: [
+                      _SummaryHeader(
+                        inProgress: _controller.inProgressCount,
+                        finished: _controller.finishedCount,
+                      ),
+                      for (final progress in _controller.items)
+                        ReadingProgressCard(
+                          progress: progress,
+                          onTap: () => _quickUpdatePage(progress),
+                          onUpdatePage: () => _quickUpdatePage(progress),
+                          onEdit: () => _openForm(existing: progress),
+                          onDelete: () => _confirmDelete(progress),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
         icon: const Icon(Icons.add),
         label: const Text('Tambah'),
-      ),
-      body: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, _) {
-          if (_controller.isLoading && _controller.items.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (_controller.isEmpty) {
-            return const _EmptyState();
-          }
-          return RefreshIndicator(
-            onRefresh: _controller.load,
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 88),
-              children: [
-                _SummaryHeader(
-                  inProgress: _controller.inProgressCount,
-                  finished: _controller.finishedCount,
-                ),
-                for (final progress in _controller.items)
-                  ReadingProgressCard(
-                    progress: progress,
-                    onTap: () => _quickUpdatePage(progress),
-                    onUpdatePage: () => _quickUpdatePage(progress),
-                    onEdit: () => _openForm(existing: progress),
-                    onDelete: () => _confirmDelete(progress),
-                  ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }

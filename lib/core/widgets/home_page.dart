@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../services/open_library_service.dart';
 import '../theme/app_theme.dart';
+import 'app_header.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.onSwitchTab});
@@ -38,31 +39,23 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
     return Scaffold(
       body: RefreshIndicator(onRefresh: _loadBooks, child: CustomScrollView(slivers: [
-        // Banner
-        SliverToBoxAdapter(child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16),
-          child: Container(padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Halo, Pembaca! 👋', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text('Temukan buku favoritmu hari ini', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                ])),
-                Container(padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(14)),
-                  child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 32)),
-              ]),
-              const SizedBox(height: 20),
-              GestureDetector(onTap: () => _openSearch(context),
-                child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-                  child: const Row(children: [Icon(Icons.search, color: Colors.white70), SizedBox(width: 10),
-                    Text('Cari buku, penulis...', style: TextStyle(color: Colors.white70))]))),
-            ])))),
+        // Header
+        SliverToBoxAdapter(child: AppHeader(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppHeaderTitle(
+              title: 'Halo, Pembaca! 👋',
+              subtitle: 'Temukan buku favoritmu hari ini',
+              trailing: const AppHeaderAction(icon: Icons.auto_stories_rounded),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(onTap: () => _openSearch(context),
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+                child: const Row(children: [Icon(Icons.search, color: Colors.white70), SizedBox(width: 10),
+                  Text('Cari buku, penulis...', style: TextStyle(color: Colors.white70))]))),
+          ],
+        ))),
         // Divider
         const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16), child: Divider(thickness: 1))),
         // Feature Cards

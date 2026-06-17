@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/auth_service.dart';
 import '../../data/models/discussion.dart';
 import '../../data/repositories/community_repository.dart';
 
@@ -22,8 +23,9 @@ class _DiscussionDetailPageState extends State<DiscussionDetailPage> {
     if (_replyCtrl.text.trim().isEmpty) return;
     setState(() => _sending = true);
     try {
+      final me = AuthService.instance;
       await _repo.addReply(widget.discussion.id, Reply(
-        id: '', userId: 'guest', userName: 'Tamu',
+        id: '', userId: me.uid, userName: me.displayName,
         body: _replyCtrl.text.trim(), createdAt: DateTime.now()));
       _replyCtrl.clear();
     } catch (e) {
@@ -56,7 +58,7 @@ class _DiscussionDetailPageState extends State<DiscussionDetailPage> {
                   CircleAvatar(radius: 14, child: Text(r.userName.isNotEmpty ? r.userName[0] : '?')),
                   const SizedBox(width: 8),
                   Expanded(child: Text(r.userName, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600))),
-                  if (r.userId == 'guest') PopupMenuButton<String>(
+                  if (r.userId == AuthService.instance.uid) PopupMenuButton<String>(
                     onSelected: (v) { if (v == 'delete') { _repo.deleteReply(d.id, r.id); } },
                     itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('Hapus'))]),
                 ]),

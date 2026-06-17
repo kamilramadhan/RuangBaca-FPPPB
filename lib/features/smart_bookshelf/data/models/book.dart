@@ -6,6 +6,7 @@ class Book {
     required this.category,
     required this.shelfId,
     required this.status,
+    this.ownerId,
     this.notes,
   });
 
@@ -15,6 +16,8 @@ class Book {
   final String category;
   final String shelfId;
   final BookStatus status;
+  /// UID pemilik buku. Di Firestore diturunkan dari path koleksi; di InMemory di-set manual.
+  final String? ownerId;
   final String? notes;
 
   Book copyWith({
@@ -24,6 +27,7 @@ class Book {
     String? category,
     String? shelfId,
     BookStatus? status,
+    String? ownerId,
     String? notes,
   }) {
     return Book(
@@ -33,6 +37,7 @@ class Book {
       category: category ?? this.category,
       shelfId: shelfId ?? this.shelfId,
       status: status ?? this.status,
+      ownerId: ownerId ?? this.ownerId,
       notes: notes ?? this.notes,
     );
   }
@@ -45,10 +50,11 @@ class Book {
       'shelfId': shelfId,
       'status': status.name,
       'notes': notes,
+      // ownerId tidak disimpan di dokumen — diturunkan dari path koleksi
     };
   }
 
-  factory Book.fromMap(String id, Map<String, Object?> map) {
+  factory Book.fromMap(String id, Map<String, Object?> map, {String? ownerId}) {
     return Book(
       id: id,
       title: map['title'] as String? ?? '',
@@ -56,6 +62,7 @@ class Book {
       category: map['category'] as String? ?? '',
       shelfId: map['shelfId'] as String? ?? '',
       status: BookStatus.fromName(map['status'] as String?),
+      ownerId: ownerId,
       notes: map['notes'] as String?,
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../smart_bookshelf/smart_bookshelf.dart';
 import '../../data/models/reading_progress.dart';
 import '../controllers/reading_progress_controller.dart';
 
@@ -29,6 +30,7 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
   late final TextEditingController _authorCtrl;
   late final TextEditingController _currentPageCtrl;
   late final TextEditingController _totalPagesCtrl;
+  String? _selectedBookId;
   bool _saving = false;
 
   @override
@@ -43,6 +45,7 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
     _totalPagesCtrl = TextEditingController(
       text: e == null ? '' : e.totalPages.toString(),
     );
+    _selectedBookId = e?.bookId;
   }
 
   @override
@@ -52,6 +55,24 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
     _currentPageCtrl.dispose();
     _totalPagesCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromBookshelf() async {
+    final book = await showModalBottomSheet<Book>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _BookshelfPickerSheet(),
+    );
+    if (book != null) {
+      setState(() {
+        _titleCtrl.text = book.title;
+        _authorCtrl.text = book.author;
+        _selectedBookId = book.id;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -78,6 +99,7 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
           author: author,
           currentPage: currentPage,
           totalPages: totalPages,
+          bookId: _selectedBookId,
         );
       }
       if (mounted) Navigator.pop(context);
@@ -111,6 +133,31 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (!widget.isEdit) ...[
+              OutlinedButton.icon(
+                onPressed: _pickFromBookshelf,
+                icon: const Icon(Icons.menu_book_outlined),
+                label: Text(_selectedBookId != null
+                    ? 'Ganti pilihan dari Rak Buku'
+                    : 'Pilih dari Rak Buku (opsional)'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  'atau isi manual di bawah',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             TextFormField(
               controller: _titleCtrl,
               textCapitalization: TextCapitalization.words,
@@ -175,6 +222,113 @@ class _ReadingProgressFormPageState extends State<ReadingProgressFormPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Sheet pemilih buku dari Smart Bookshelf ──────────────────────────────────
+
+class _BookshelfPickerSheet extends StatefulWidget {
+  const _BookshelfPickerSheet();
+
+  @override
+  State<_BookshelfPickerSheet> createState() => _BookshelfPickerSheetState();
+}
+
+class _BookshelfPickerSheetState extends State<_BookshelfPickerSheet> {
+  final _repo = BookshelfRepositoryFactory.create();
+  List<Book> _books = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBooks();
+  }
+
+  Future<void> _loadBooks() async {
+    final books = await _repo.getBooks();
+    if (mounted) {
+      setState(() {
+        // Tampilkan semua kecuali wishlist — masuk akal untuk dilacak progressnya
+        _books = books
+            .where((b) => b.status != BookStatus.wishlist)
+            .toList();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (_, ctrl) => Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Pilih dari Rak Buku',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _books.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Koleksi buku kosong.\nTambah buku di Rak Buku terlebih dahulu.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: ctrl,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _books.length,
+                        itemBuilder: (_, i) {
+                          final book = _books[i];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              child: Icon(Icons.menu_book_rounded,
+                                  color: theme.colorScheme.primary, size: 18),
+                            ),
+                            title: Text(book.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            subtitle: Text(book.author,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            trailing: Chip(
+                              label: Text(book.status.label,
+                                  style: const TextStyle(fontSize: 10)),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            onTap: () => Navigator.pop(context, book),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }

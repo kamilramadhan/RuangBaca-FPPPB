@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Data buku & rak: hanya pemilik yang bisa baca/tulis koleksinya sendiri
+    match /users/{userId}/books/{bookId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/shelves/{shelfId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Buku yang tersedia dipinjam: semua user login bisa baca (untuk tab Cari Buku)
+    match /users/{userId}/books/{bookId} {
+      allow read: if request.auth != null
+        && resource.data.status == 'availableToLend';
+    }
+
+    // Permintaan pinjam: pemilik & peminjam bisa baca, peminjam bisa buat,
+    // pemilik bisa update status
+    match /borrowRequests/{requestId} {
+      allow read: if request.auth != null
+        && (resource.data.ownerId == request.auth.uid
+            || resource.data.borrowerId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.borrowerId == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Komunitas: semua user login bisa baca; hanya pembuat yang bisa ubah/hapus
+    match /reviews/{reviewId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /discussions/{discussionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+
+      match /replies/{replyId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if request.auth != null
+          && resource.data.userId == request.auth.uid;
+      }
+    }
+  }
+}

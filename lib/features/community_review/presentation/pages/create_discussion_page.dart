@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/open_library_service.dart';
 import '../../data/models/discussion.dart';
 import '../../data/repositories/community_repository.dart';
@@ -51,10 +52,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         await _repo.updateDiscussion(widget.existingDiscussion!.copyWith(
           title: _titleCtrl.text.trim(), body: _bodyCtrl.text.trim(), updatedAt: DateTime.now()));
       } else {
+        final me = AuthService.instance;
         await _repo.createDiscussion(Discussion(
           id: '', bookId: _selectedBook!.id, bookTitle: _selectedBook!.title,
           bookThumbnail: _selectedBook!.thumbnailUrl,
-          userId: 'guest', userName: 'Tamu',
+          userId: me.uid, userName: me.displayName,
           title: _titleCtrl.text.trim(), body: _bodyCtrl.text.trim(), createdAt: DateTime.now()));
       }
       if (mounted) Navigator.pop(context);

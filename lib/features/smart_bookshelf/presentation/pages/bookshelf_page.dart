@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../data/models/book.dart';
 import '../../data/models/borrow_request.dart';
 import '../../data/models/shelf.dart';
@@ -24,6 +26,7 @@ class _BookshelfPageState extends State<BookshelfPage>
   List<BorrowRequest> _incoming = [];
   List<BorrowRequest> _outgoing = [];
   bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -39,23 +42,34 @@ class _BookshelfPageState extends State<BookshelfPage>
   }
 
   Future<void> _load() async {
-    setState(() => _isLoading = true);
-    final results = await Future.wait([
-      _repository.getBooks(),
-      _repository.getShelves(),
-      _repository.getAvailableBooks(),
-      _repository.getIncomingRequests(),
-      _repository.getOutgoingRequests(),
-    ]);
-    if (!mounted) return;
     setState(() {
-      _books = results[0] as List<Book>;
-      _shelves = results[1] as List<Shelf>;
-      _availableBooks = results[2] as List<Book>;
-      _incoming = results[3] as List<BorrowRequest>;
-      _outgoing = results[4] as List<BorrowRequest>;
-      _isLoading = false;
+      _isLoading = true;
+      _loadError = null;
     });
+    try {
+      final results = await Future.wait([
+        _repository.getBooks(),
+        _repository.getShelves(),
+        _repository.getAvailableBooks(),
+        _repository.getIncomingRequests(),
+        _repository.getOutgoingRequests(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _books = results[0] as List<Book>;
+        _shelves = results[1] as List<Shelf>;
+        _availableBooks = results[2] as List<Book>;
+        _incoming = results[3] as List<BorrowRequest>;
+        _outgoing = results[4] as List<BorrowRequest>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   int get _pendingIncoming =>
@@ -64,34 +78,110 @@ class _BookshelfPageState extends State<BookshelfPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smart Bookshelf'),
-        actions: [
-          IconButton(
-            tooltip: 'Tambah rak',
-            onPressed: _showAddShelfSheet,
-            icon: const Icon(Icons.create_new_folder_outlined),
+      body: Column(
+        children: [
+          AppHeader(
+            padding: EdgeInsets.fromLTRB(
+                0, MediaQuery.of(context).padding.top + 16, 0, 0),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: AppHeaderTitle(
+                    title: 'Smart Bookshelf',
+                    trailing: AppHeaderAction(
+                      icon: Icons.create_new_folder_outlined,
+                      tooltip: 'Tambah rak',
+                      onPressed: _showAddShelfSheet,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white70,
+                  indicatorColor: Colors.white,
+                  tabs: [
+                    const Tab(text: 'Koleksi Saya'),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Permintaan'),
+                          if (_pendingIncoming > 0) ...[
+                            const SizedBox(width: 6),
+                            _Badge(_pendingIncoming),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const Tab(text: 'Cari Buku'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _loadError != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const SizedBox(height: 12),
+                          const Text('Gagal memuat data rak buku.'),
+                          const SizedBox(height: 4),
+                          Text(_loadError!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 16),
+                          FilledButton(onPressed: _load, child: const Text('Coba lagi')),
+                        ],
+                      ),
+                    ),
+                  )
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _MyCollectionTab(
+                        books: _books,
+                        shelves: _shelves,
+                        onRefresh: _load,
+                        onEdit: _showEditBookSheet,
+                        onDelete: (book) async {
+                          await _repository.removeBook(book.id);
+                          await _load();
+                        },
+                        onToggleLend: (book) async {
+                          final next = book.status == BookStatus.availableToLend
+                              ? book.copyWith(status: BookStatus.owned)
+                              : book.copyWith(status: BookStatus.availableToLend);
+                          await _repository.updateBook(next);
+                          await _load();
+                        },
+                      ),
+                      _RequestsTab(
+                        incoming: _incoming,
+                        outgoing: _outgoing,
+                        onRefresh: _load,
+                        onApprove: (req) => _handleRequest(req, BorrowRequestStatus.approved),
+                        onReject: (req) => _handleRequest(req, BorrowRequestStatus.rejected),
+                        onMarkReturned: (req) => _handleRequest(req, BorrowRequestStatus.returned),
+                      ),
+                      _FindBooksTab(
+                        availableBooks: _availableBooks,
+                        outgoing: _outgoing,
+                        onRequestBorrow: _showBorrowRequestSheet,
+                      ),
+                    ],
+                  ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            const Tab(text: 'Koleksi Saya'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Permintaan'),
-                  if (_pendingIncoming > 0) ...[
-                    const SizedBox(width: 6),
-                    _Badge(_pendingIncoming),
-                  ],
-                ],
-              ),
-            ),
-            const Tab(text: 'Cari Buku'),
-          ],
-        ),
       ),
       floatingActionButton: _tabController.index == 0
           ? FloatingActionButton.extended(
@@ -100,43 +190,6 @@ class _BookshelfPageState extends State<BookshelfPage>
               label: const Text('Buku'),
             )
           : null,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _MyCollectionTab(
-                  books: _books,
-                  shelves: _shelves,
-                  onRefresh: _load,
-                  onEdit: _showEditBookSheet,
-                  onDelete: (book) async {
-                    await _repository.removeBook(book.id);
-                    await _load();
-                  },
-                  onToggleLend: (book) async {
-                    final next = book.status == BookStatus.availableToLend
-                        ? book.copyWith(status: BookStatus.owned)
-                        : book.copyWith(status: BookStatus.availableToLend);
-                    await _repository.updateBook(next);
-                    await _load();
-                  },
-                ),
-                _RequestsTab(
-                  incoming: _incoming,
-                  outgoing: _outgoing,
-                  onRefresh: _load,
-                  onApprove: (req) => _handleRequest(req, BorrowRequestStatus.approved),
-                  onReject: (req) => _handleRequest(req, BorrowRequestStatus.rejected),
-                  onMarkReturned: (req) => _handleRequest(req, BorrowRequestStatus.returned),
-                ),
-                _FindBooksTab(
-                  availableBooks: _availableBooks,
-                  outgoing: _outgoing,
-                  onRequestBorrow: _showBorrowRequestSheet,
-                ),
-              ],
-            ),
     );
   }
 
@@ -208,14 +261,15 @@ class _BookshelfPageState extends State<BookshelfPage>
         book: book,
         onConfirm: () async {
           Navigator.pop(context);
+          final me = AuthService.instance;
           final req = BorrowRequest(
             id: 'req-${DateTime.now().microsecondsSinceEpoch}',
             bookId: book.id,
             bookTitle: book.title,
-            ownerId: book.id,
-            ownerName: 'Pemilik',
-            borrowerId: 'user-me',
-            borrowerName: 'Saya',
+            ownerId: book.ownerId ?? 'unknown',
+            ownerName: 'Pengguna Lain',
+            borrowerId: me.uid,
+            borrowerName: me.displayName,
             status: BorrowRequestStatus.pending,
             requestedAt: DateTime.now(),
           );
