@@ -3,6 +3,7 @@
 library;
 
 export 'data/models/reading_progress.dart';
+export 'data/repositories/firestore_reading_progress_repository.dart';
 export 'data/repositories/in_memory_reading_progress_repository.dart';
 export 'data/repositories/reading_progress_repository.dart';
 export 'presentation/controllers/reading_progress_controller.dart';

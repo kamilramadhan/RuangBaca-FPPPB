@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/widgets/app_header.dart';
 import '../../data/models/reading_progress.dart';
-import '../../data/repositories/in_memory_reading_progress_repository.dart';
+import '../../data/repositories/firestore_reading_progress_repository.dart';
 import '../controllers/reading_progress_controller.dart';
 import '../widgets/reading_progress_card.dart';
 import '../widgets/update_page_dialog.dart';
@@ -18,9 +18,9 @@ class ReadingProgressPage extends StatefulWidget {
 }
 
 class _ReadingProgressPageState extends State<ReadingProgressPage> {
-  // Repository in-memory + data contoh. Ganti ke implementasi persisten nanti.
+  // Firestore saat login; fallback in-memory (dengan seed demo) bila tidak.
   late final ReadingProgressController _controller = ReadingProgressController(
-    InMemoryReadingProgressRepository(seed: _seedData()),
+    ReadingProgressRepositoryFactory.create(seed: _seedData()),
   )..load();
 
   @override

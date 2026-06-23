@@ -31,6 +31,37 @@ class ReadingProgress {
 
   int get remainingPages => (totalPages - currentPage).clamp(0, totalPages);
 
+  /// Serialisasi untuk Firestore. `id` tidak disimpan di body (dipakai sebagai
+  /// doc id). `DateTime` disimpan sebagai milliseconds epoch agar tidak perlu
+  /// import `Timestamp` di model.
+  Map<String, dynamic> toMap() {
+    return {
+      'bookTitle': bookTitle,
+      'author': author,
+      'currentPage': currentPage,
+      'totalPages': totalPages,
+      'startedAt': startedAt.millisecondsSinceEpoch,
+      'updatedAt': updatedAt.millisecondsSinceEpoch,
+      'bookId': bookId,
+    };
+  }
+
+  factory ReadingProgress.fromMap(String id, Map<String, Object?> map) {
+    int toInt(Object? v) => v is num ? v.toInt() : 0;
+    DateTime toDate(Object? v) =>
+        DateTime.fromMillisecondsSinceEpoch(toInt(v));
+    return ReadingProgress(
+      id: id,
+      bookTitle: (map['bookTitle'] as String?) ?? '',
+      author: map['author'] as String?,
+      currentPage: toInt(map['currentPage']),
+      totalPages: toInt(map['totalPages']),
+      startedAt: toDate(map['startedAt']),
+      updatedAt: toDate(map['updatedAt']),
+      bookId: map['bookId'] as String?,
+    );
+  }
+
   ReadingProgress copyWith({
     String? bookTitle,
     String? author,
