@@ -2,6 +2,24 @@
 
 Aplikasi Flutter untuk pembaca buku. Tiga fitur utama dikerjakan paralel oleh tiga developer:
 
+## 🌍 SDG Alignment — SDG 4: Quality Education
+
+> **RuangBaca** berkontribusi pada **Sustainable Development Goal 4 — Quality Education** dengan mendorong budaya membaca, memfasilitasi berbagi pengetahuan antar pengguna melalui fitur komunitas, serta memudahkan pengelolaan koleksi buku pribadi. Aplikasi ini mendukung pencapaian literasi berkualitas yang inklusif dan merata.
+
+## 🛠️ Tech Stack
+
+| Komponen | Teknologi |
+|---|---|
+| Framework | Flutter (Dart) |
+| Auth | Firebase Authentication |
+| Database | Cloud Firestore |
+| Push Notifikasi | Firebase Cloud Messaging + flutter_local_notifications |
+| Crash Reporting | Firebase Crashlytics |
+| External API | OpenLibrary API |
+| Version Control | GitHub |
+
+
+
 | Fitur | Deskripsi | Owner |
 |-------|-----------|-------|
 | **Smart Bookshelf** | Mengelola koleksi buku user: tambah/hapus, kategorisasi, rak custom, status (owned / wishlist / lent). | Dev A |

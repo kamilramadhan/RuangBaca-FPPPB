@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Model diskusi/thread.
 class Discussion {
   const Discussion({
@@ -25,6 +27,36 @@ class Discussion {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final int replyCount;
+
+  Map<String, dynamic> toMap() => {
+        'bookId': bookId,
+        'bookTitle': bookTitle,
+        'bookThumbnail': bookThumbnail,
+        'userId': userId,
+        'userName': userName,
+        'title': title,
+        'body': body,
+        'replyCount': replyCount,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      };
+
+  factory Discussion.fromDoc(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return Discussion(
+      id: doc.id,
+      bookId: d['bookId'] as String? ?? '',
+      bookTitle: d['bookTitle'] as String? ?? '',
+      bookThumbnail: d['bookThumbnail'] as String?,
+      userId: d['userId'] as String? ?? '',
+      userName: d['userName'] as String? ?? 'Pengguna',
+      title: d['title'] as String? ?? '',
+      body: d['body'] as String? ?? '',
+      replyCount: (d['replyCount'] as num?)?.toInt() ?? 0,
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
+    );
+  }
 
   Discussion copyWith({
     String? title,
@@ -65,4 +97,24 @@ class Reply {
   final String body;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  Map<String, dynamic> toMap() => {
+        'userId': userId,
+        'userName': userName,
+        'body': body,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      };
+
+  factory Reply.fromDoc(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return Reply(
+      id: doc.id,
+      userId: d['userId'] as String? ?? '',
+      userName: d['userName'] as String? ?? 'Pengguna',
+      body: d['body'] as String? ?? '',
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
+    );
+  }
 }

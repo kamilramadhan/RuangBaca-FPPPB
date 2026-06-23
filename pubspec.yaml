@@ -37,12 +37,16 @@ dependencies:
   firebase_core: ^4.10.0
   firebase_auth: ^6.5.2
   cloud_firestore: ^6.5.0
+  firebase_messaging: ^16.3.0
+  firebase_crashlytics: ^5.1.0
+  flutter_local_notifications: ^18.0.1
   http: ^1.2.0
 
   # UI packages
   cached_network_image: ^3.3.0
   google_fonts: ^6.1.0
   shimmer: ^3.0.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
