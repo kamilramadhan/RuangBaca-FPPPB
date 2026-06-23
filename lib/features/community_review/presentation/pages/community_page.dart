@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../data/models/review.dart';
 import '../../data/models/discussion.dart';
 import '../../data/repositories/community_repository.dart';
@@ -196,8 +197,6 @@ class _ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isOwner = AuthService.instance.uid == review.userId;
-    final initial =
-        review.userName.isNotEmpty ? review.userName[0].toUpperCase() : 'P';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -207,14 +206,10 @@ class _ReviewCard extends StatelessWidget {
           // ── Baris atas: avatar + info buku + menu ──
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Avatar user
-            CircleAvatar(
+            UserAvatar(
+              userId: review.userId,
+              userName: review.userName,
               radius: 18,
-              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
-              child: Text(initial,
-                  style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -340,9 +335,6 @@ class _DiscussionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isOwner = AuthService.instance.uid == discussion.userId;
-    final initial = discussion.userName.isNotEmpty
-        ? discussion.userName[0].toUpperCase()
-        : 'P';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -359,14 +351,10 @@ class _DiscussionCard extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // ── Baris atas: avatar + user info + menu ──
             Row(children: [
-              CircleAvatar(
+              UserAvatar(
+                userId: discussion.userId,
+                userName: discussion.userName,
                 radius: 18,
-                backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.15),
-                child: Text(initial,
-                    style: TextStyle(
-                        color: AppTheme.secondaryColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
               ),
               const SizedBox(width: 10),
               Expanded(

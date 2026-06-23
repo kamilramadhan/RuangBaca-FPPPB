@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../data/models/discussion.dart';
 import '../../data/repositories/community_repository.dart';
 
@@ -54,8 +55,6 @@ class _DiscussionDetailPageState extends State<DiscussionDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final d = widget.discussion;
-    final initial =
-        d.userName.isNotEmpty ? d.userName[0].toUpperCase() : 'P';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Diskusi')),
@@ -66,13 +65,10 @@ class _DiscussionDetailPageState extends State<DiscussionDetailPage> {
             children: [
               // ── Header diskusi ──
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                CircleAvatar(
+                UserAvatar(
+                  userId: d.userId,
+                  userName: d.userName,
                   radius: 20,
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
-                  child: Text(initial,
-                      style: const TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -194,20 +190,14 @@ class _ReplyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isOwner = reply.userId == AuthService.instance.uid;
-    final initial =
-        reply.userName.isNotEmpty ? reply.userName[0].toUpperCase() : 'P';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        CircleAvatar(
+        UserAvatar(
+          userId: reply.userId,
+          userName: reply.userName,
           radius: 15,
-          backgroundColor: AppTheme.accentColor,
-          child: Text(initial,
-              style: const TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
         ),
         const SizedBox(width: 10),
         Expanded(
